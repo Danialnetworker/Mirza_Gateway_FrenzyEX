@@ -1,4 +1,4 @@
-> **Mirza_Gateway_FrenzyEX** — the same build as [Mirza_Gateway](https://github.com/Danialnetworker/Mirza_Gateway) (Mirza 0.5.8 + FrenzyEx + Cloudius + fixes), without the Tronado gateway.
+> **Mirza_Gateway_FrenzyEX** — the same build as [Mirza_Gateway](https://github.com/Danialnetworker/Mirza_Gateway) (Mirza 0.6.0 + FrenzyEx + Cloudius + fixes), without the Tronado gateway.
 
 <div align="center">
 
@@ -19,17 +19,17 @@
 </p>
 
 <p>
-  <a href="https://github.com/mahdiMGF2/mirzabot/stargazers">
-    <img src="https://img.shields.io/github/stars/mahdiMGF2/mirzabot?style=flat-square&color=f5c518" alt="Stars"/>
+  <a href="https://github.com/Danialnetworker/Mirza_Gateway_FrenzyEX/stargazers">
+    <img src="https://img.shields.io/github/stars/Danialnetworker/Mirza_Gateway_FrenzyEX?style=flat-square&color=f5c518" alt="Stars"/>
   </a>
-  <a href="https://github.com/mahdiMGF2/mirzabot/network/members">
-    <img src="https://img.shields.io/github/forks/mahdiMGF2/mirzabot?style=flat-square" alt="Forks"/>
+  <a href="https://github.com/Danialnetworker/Mirza_Gateway_FrenzyEX/network/members">
+    <img src="https://img.shields.io/github/forks/Danialnetworker/Mirza_Gateway_FrenzyEX?style=flat-square" alt="Forks"/>
   </a>
-  <a href="https://github.com/mahdiMGF2/mirzabot/issues">
-    <img src="https://img.shields.io/github/issues/mahdiMGF2/mirzabot?style=flat-square" alt="Issues"/>
+  <a href="https://github.com/Danialnetworker/Mirza_Gateway_FrenzyEX/issues">
+    <img src="https://img.shields.io/github/issues/Danialnetworker/Mirza_Gateway_FrenzyEX?style=flat-square" alt="Issues"/>
   </a>
-  <a href="https://github.com/mahdiMGF2/mirzabot/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/mahdiMGF2/mirzabot?style=flat-square" alt="License"/>
+  <a href="https://github.com/Danialnetworker/Mirza_Gateway_FrenzyEX/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/Danialnetworker/Mirza_Gateway_FrenzyEX?style=flat-square" alt="License"/>
   </a>
   <img src="https://img.shields.io/badge/PHP-8.2-777BB4?style=flat-square&logo=php&logoColor=white" alt="PHP 8.2"/>
 </p>
@@ -304,6 +304,6 @@ Thanks to everyone who has contributed to making Mirza Bot better:
 
 **Made with ❤️ by the Mirza Panel community**
 
-📖 [Documentation](https://mirzabot.com/docs/) · 💬 [Channel](https://t.me/mirzapanel) · 👥 [Group](https://t.me/mirzapanelgroup) · ⭐ [Star on GitHub](https://github.com/mahdiMGF2/mirzabot)
+📖 [Documentation](https://mirzabot.com/docs/) · 💬 [Channel](https://t.me/mirzapanel) · 👥 [Group](https://t.me/mirzapanelgroup) · ⭐ [Star on GitHub](https://github.com/Danialnetworker/Mirza_Gateway_FrenzyEX)
 
 </div>
