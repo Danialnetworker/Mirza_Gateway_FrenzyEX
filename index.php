@@ -4966,7 +4966,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     update("user", "Processing_value", $balancelast, "id", $from_id);
     sendmessage($from_id, $textbotlang['users']['Balance']['selectPayment'], $step_payment, 'HTML');
     step('get_step_payment', $from_id);
-} elseif (in_array($user['step'], ["get_step_payment", "get_step_payment_buy", "get_step_payment_service"]) && in_array($datain, ["cart_to_offline", "aqayepardakht", "zarinpal", "variza", "plisio", "nowpayment", "iranpay1", "iranpay2", "iranpay4", "frenzyex", "tetra98", "iranpay3", "digitaltron", "startelegrams", "cof-trc20", "cof-bep20"])) {
+} elseif (in_array($user['step'], ["get_step_payment", "get_step_payment_buy", "get_step_payment_service"]) && in_array($datain, ["cart_to_offline", "aqayepardakht", "zarinpal", "variza", "plisio", "nowpayment", "iranpay1", "iranpay2", "iranpay4", "frenzyex", "tetra98", "iranpay3", "digitaltron", "startelegrams", "cof-trc20", "cof-bep20", "cof-pick", "cof-back"])) {   // [cof-pick]
     if ($user['step'] == "get_step_payment_buy") {
         $pending_order = select("invoice", "*", "id_invoice", $user['Processing_value_one'], "select");
         if ($pending_order == false || $pending_order['Status'] != "unpaid") {
@@ -5743,6 +5743,35 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         sendmessage($from_id, $textnowpayments, $paymentkeyboard, 'HTML');
         step("getvoocherx", $from_id);
         savedata("clear", "id_payment", $randomString);
+    } elseif ($datain == "cof-pick" || $datain == "cof-back") {   // [cof-pick]
+        require_once __DIR__ . '/crypto_offline_lib.php';
+        if ($datain == "cof-back") {
+            Editmessagetext($from_id, $message_id, $textbotlang['users']['Balance']['selectPayment'], $step_payment);
+            return;
+        }
+        if (getPaySettingValue("digistatus") != "ondigi" || !cofEnabledNetworks()) {
+            sendmessage($from_id, "❌ این روش پرداخت در حال حاضر غیرفعال است.", null, 'HTML');
+            return;
+        }
+        $rates = rate_arze();
+        if ($rates === null || empty($rates['USD'])) {
+            sendmessage($from_id, $textbotlang['users']['Balance']['errorLinkPayment'], $keyboard, 'HTML');
+            return;
+        }
+        if (cofTooSmall((int) $user['Processing_value'], (float) $rates['USD'])) {
+            sendmessage($from_id, cofSmallText((float) $rates['USD']), null, 'HTML');
+            return;
+        }
+        $cofRows = [];
+        foreach (cofEnabledNetworks() as $cofNet => $cofInfo) {
+            $cofRows[] = [['text' => "💎 " . $cofInfo['label'], 'callback_data' => "cof-$cofNet"]];
+        }
+        $cofRows[] = [['text' => $textbotlang['Admin']['backMenuBtn'] ?? "🔙 بازگشت", 'callback_data' => "cof-back"]];
+        $cofPay = cofDiscounted((int) $user['Processing_value']);
+        Editmessagetext($from_id, $message_id, "💎 شبکهٔ پرداخت تتر (USDT) را انتخاب کنید:\n\n"
+            . "💰 مبلغ: <b>" . number_format((int) $user['Processing_value']) . " تومان</b>"
+            . ($cofPay < (int) $user['Processing_value'] ? "\n🎁 با تخفیف: <b>" . number_format($cofPay) . " تومان</b>" : "")
+            . "\n\n⚠️ تتر را فقط روی همان شبکه‌ای واریز کنید که اینجا انتخاب می‌کنید.", json_encode(['inline_keyboard' => $cofRows]));
     } elseif (preg_match('/^cof-(trc20|bep20)$/', $datain, $cofMatch)) {
         // [crypto-offline-auto] create a USDT invoice with a unique amount
         require_once __DIR__ . '/crypto_offline_lib.php';
@@ -5766,7 +5795,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         $cofInvoice = cofCreateInvoice((string) $from_id, $cofNet, (int) $user['Processing_value'], '', (float) $rates['USD']); // [mirza-0.8-link]
         if (isset($cofInvoice['error'])) {
             $cofErrors = [
-                'small' => "❌ مبلغ این پرداخت کمتر از ۱ تتر است؛ لطفاً روش دیگری انتخاب کنید.",
+                'small' => cofSmallText((float) $rates['USD']),   // [cof-pick] says the real minimum
                 'busy' => "⏳ تعداد فاکتورهای باز این شبکه زیاد است؛ چند دقیقه دیگر دوباره تلاش کنید.",
             ];
             sendmessage($from_id, $cofErrors[$cofInvoice['error']] ?? $textbotlang['users']['Balance']['errorLinkPayment'], null, 'HTML');

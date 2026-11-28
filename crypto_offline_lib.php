@@ -65,6 +65,36 @@ function cofDiscounted(int $price): int
     return (int) round($price * (100 - cofDiscount()) / 100);
 }
 
+// [cof-pick] the invoice needs at least 1 USDT after the discount (same rule as cofCreateInvoice)
+function cofTooSmall(int $price, float $usdRate): bool
+{
+    return $usdRate <= 0 || (int) ceil(round(cofDiscounted($price) * 100 / $usdRate, 4)) < 100;
+}
+
+/** Smallest toman amount (rounded up to 1,000) that is payable in USDT at this rate. */
+function cofMinToman(float $usdRate): int
+{
+    $d = 100 - cofDiscount();
+    $t = (int) ceil($usdRate * 100 / max(1.0, $d));
+    while (cofTooSmall($t, $usdRate)) {
+        $t++;
+    }
+    return (int) (ceil($t / 1000) * 1000);
+}
+
+function cofSmallText(float $usdRate): string
+{
+    return "❌ پرداخت با تتر برای مبلغ‌های کمتر از ۱ تتر ممکن نیست.\n"
+        . "💵 حداقل مبلغ برای این روش: <b>" . number_format(cofMinToman($usdRate)) . " تومان</b>\n"
+        . "برای این مبلغ لطفاً روش پرداخت دیگری انتخاب کنید.";
+}
+
+function cofPickButtonText(): string
+{
+    $d = cofDiscount();
+    return "💎 پرداخت با تتر (USDT)" . ($d > 0 ? " | 🎁 " . cofFmtPercent($d) . "٪ تخفیف" : "");
+}
+
 function cofFmtPercent(float $d): string
 {
     return rtrim(rtrim(number_format($d, 2, '.', ''), '0'), '.');

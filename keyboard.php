@@ -329,10 +329,15 @@ if ($payment_status_nowpayment == "1") {
 require_once __DIR__ . '/crypto_offline_lib.php';
 if ($affilnecurrency == "ondigi") {
     $cofDiscountNow = cofDiscount();
-    foreach (cofEnabledNetworks() as $cofNet => $cofInfo) {
-        $step_payment['inline_keyboard'][] = [
-            ['text' => "💎 " . $cofInfo['label'] . ($cofDiscountNow > 0 ? " | 🎁 " . cofFmtPercent($cofDiscountNow) . "٪ تخفیف" : ""), 'callback_data' => "cof-$cofNet"]
-        ];
+    $cofNets = cofEnabledNetworks();
+    if (count($cofNets) > 1) {   // [cof-pick] one button; the network is chosen on the next screen
+        $step_payment['inline_keyboard'][] = [['text' => cofPickButtonText(), 'callback_data' => "cof-pick"]];
+    } else {
+        foreach ($cofNets as $cofNet => $cofInfo) {
+            $step_payment['inline_keyboard'][] = [
+                ['text' => "💎 " . $cofInfo['label'] . ($cofDiscountNow > 0 ? " | 🎁 " . cofFmtPercent($cofDiscountNow) . "٪ تخفیف" : ""), 'callback_data' => "cof-$cofNet"]
+            ];
+        }
     }
 }
 if ($Swapino == "onSwapinoBot") {
