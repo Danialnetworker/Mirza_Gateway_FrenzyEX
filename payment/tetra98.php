@@ -19,26 +19,49 @@ require __DIR__ . '/../vendor/autoload.php';
 $ManagePanel = new ManagePanel();
 $textbotlang = languagechange();
 
-$sigHeader = (string) ($_SERVER['HTTP_X_TETRAPAY_SIGNATURE'] ?? '');
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $sigHeader !== '') {
+// [tetra98-wh] every POST is a webhook. The body is never trusted: only its token is taken and the
+// result comes from TetraPay's own verify (tetra98_settle). The signature is checked and logged, but a
+// missing/renamed header no longer drops the webhook into the HTML return page (a live payment's
+// webhook got that page with 200, so TetraPay stopped retrying).
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     $raw = (string) file_get_contents('php://input');
-    if (!tetra98_webhook_ok($raw, $sigHeader, tetra98_setting('webhooktetra98', ''))) {
-        error_log('TetraPay: webhook with a bad or stale signature');
-        http_response_code(400);
-        echo '{"ok":false}';
-        return;
+    $hdr = [];
+    foreach ((function_exists('getallheaders') ? getallheaders() : []) ?: [] as $k => $v) {
+        $hdr[strtolower((string) $k)] = (string) $v;
+    }
+    $sigHeader = (string) ($_SERVER['HTTP_X_TETRAPAY_SIGNATURE'] ?? '');
+    if ($sigHeader === '') {
+        foreach ($hdr as $k => $v) {
+            if (strpos($k, 'signature') !== false) {
+                $sigHeader = $v;
+                break;
+            }
+        }
     }
     $ev = json_decode($raw, true);
-    $event = (string) ($_SERVER['HTTP_X_TETRAPAY_EVENT'] ?? ($ev['event'] ?? ''));
-    // sandbox webhooks are signed with the real key: never let one settle a live order
-    $isSandbox = !empty($ev['sandbox']) || strtolower((string) ($_SERVER['HTTP_X_TETRAPAY_SANDBOX'] ?? '')) === 'true';
-    if (!is_array($ev) || $event !== 'payment.paid' || $isSandbox !== tetra98_sandbox()) {
+    if (!is_array($ev)) {
+        parse_str($raw, $ev);   // form-encoded fallback
+    }
+    $token = (string) ($ev['token'] ?? ($ev['data']['token'] ?? ($ev['payment']['token'] ?? '')));
+    $event = (string) ($hdr['x-tetrapay-event'] ?? ($ev['event'] ?? ($ev['type'] ?? '')));
+    $sig = $sigHeader === '' ? 'none' : (tetra98_webhook_ok($raw, $sigHeader, tetra98_setting('webhooktetra98', '')) ? 'ok' : 'bad');
+    // diagnostics: header NAMES only, never values
+    $names = array_values(array_filter(array_keys($hdr), fn($k) => !in_array($k, ['host', 'content-length', 'connection', 'accept-encoding'], true)));
+    error_log('TetraPay webhook: event=' . ($event ?: '-') . ' sig=' . $sig . ' token=' . ($token !== '' ? 'yes' : 'no')
+        . ' headers=' . implode(',', $names));
+    if ($token === '') {
+        http_response_code(400);
+        echo '{"ok":false,"error":"no token"}';
+        return;
+    }
+    // sandbox webhooks are signed with the real key: never let one settle a live order (and vice versa)
+    $isSandbox = !empty($ev['sandbox']) || strtolower((string) ($hdr['x-tetrapay-sandbox'] ?? '')) === 'true';
+    if (($event !== '' && $event !== 'payment.paid') || $isSandbox !== tetra98_sandbox()) {
         echo '{"ok":true,"ignored":true}';
         return;
     }
-    $r = tetra98_settle((string) ($ev['token'] ?? ''), 'webhook');
+    $r = tetra98_settle($token, 'webhook');
     if ($r['state'] === 'retry') {
         http_response_code(503);          // TetraPay re-sends after 1, 2, 5, 10 ... minutes
     }
