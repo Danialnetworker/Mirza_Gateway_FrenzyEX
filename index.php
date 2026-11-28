@@ -1922,7 +1922,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             $service_order_id = $pdo->lastInsertId();
             update("user", "Processing_value", $Balance_prim, "id", $from_id);
             update("user", "Processing_value_one", $service_order_id, "id", $from_id);
-            sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], $step_payment, 'HTML');
+            sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], cofStepPaymentFor($step_payment, $Balance_prim), 'HTML');   // [cof-hide]
             step('get_step_payment_service', $from_id);
             return;
         }
@@ -2274,7 +2274,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             $service_order_id = $pdo->lastInsertId();
             update("user", "Processing_value", $Balance_prim, "id", $from_id);
             update("user", "Processing_value_one", $service_order_id, "id", $from_id);
-            Editmessagetext($from_id, $message_id, $textbotlang['users']['sell']['noCredit'], $step_payment);
+            Editmessagetext($from_id, $message_id, $textbotlang['users']['sell']['noCredit'], cofStepPaymentFor($step_payment, $Balance_prim));   // [cof-hide]
             step('get_step_payment_service', $from_id);
             return;
         }
@@ -2476,7 +2476,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             if (intval($Pricechange) != 0) {
                 $Balance_prim = $Pricechange - $user['Balance'];
                 update("user", "Processing_value", $Balance_prim, "id", $from_id);
-                Editmessagetext($from_id, $message_id, $textbotlang['users']['sell']['noCredit'], $step_payment);
+                Editmessagetext($from_id, $message_id, $textbotlang['users']['sell']['noCredit'], cofStepPaymentFor($step_payment, $Balance_prim));   // [cof-hide]
                 step('get_step_payment', $from_id);
                 return;
             }
@@ -2840,7 +2840,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
                 $service_order_id = $pdo->lastInsertId();
                 update("user", "Processing_value", $Balance_prim, "id", $from_id);
                 update("user", "Processing_value_one", $service_order_id, "id", $from_id);
-                Editmessagetext($from_id, $message_id, $textbotlang['users']['sell']['noCredit'], $step_payment);
+                Editmessagetext($from_id, $message_id, $textbotlang['users']['sell']['noCredit'], cofStepPaymentFor($step_payment, $Balance_prim));   // [cof-hide]
                 step('get_step_payment_service', $from_id);
                 return;
             }
@@ -4239,7 +4239,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             update("invoice", "payable_amount", $Balance_prim, "id_invoice", $randomString);
             update("user", "Processing_value", $Balance_prim, "id", $from_id);
             update("user", "Processing_value_one", $randomString, "id", $from_id);
-            sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], $step_payment, 'HTML');
+            sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], cofStepPaymentFor($step_payment, $Balance_prim), 'HTML');   // [cof-hide]
             step('get_step_payment_buy', $from_id);
         }
         return;
@@ -4806,7 +4806,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             if ($Balance_prims <= 1)
                 $Balance_prims = 0;
             update("user", "Processing_value", $Balance_prim, "id", $from_id);
-            sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], $step_payment, 'HTML');
+            sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], cofStepPaymentFor($step_payment, $Balance_prim), 'HTML');   // [cof-hide]
             step('get_step_payment', $from_id);
             return;
         }
@@ -4964,7 +4964,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         }
     }
     update("user", "Processing_value", $balancelast, "id", $from_id);
-    sendmessage($from_id, $textbotlang['users']['Balance']['selectPayment'], $step_payment, 'HTML');
+    sendmessage($from_id, $textbotlang['users']['Balance']['selectPayment'], cofStepPaymentFor($step_payment, $balancelast), 'HTML');   // [cof-hide]
     step('get_step_payment', $from_id);
 } elseif (in_array($user['step'], ["get_step_payment", "get_step_payment_buy", "get_step_payment_service"]) && in_array($datain, ["cart_to_offline", "aqayepardakht", "zarinpal", "variza", "plisio", "nowpayment", "iranpay1", "iranpay2", "iranpay4", "frenzyex", "tetra98", "iranpay3", "digitaltron", "startelegrams", "cof-trc20", "cof-bep20", "cof-pick", "cof-back"])) {   // [cof-pick]
     if ($user['step'] == "get_step_payment_buy") {
@@ -5746,14 +5746,14 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     } elseif ($datain == "cof-pick" || $datain == "cof-back") {   // [cof-pick]
         require_once __DIR__ . '/crypto_offline_lib.php';
         if ($datain == "cof-back") {
-            Editmessagetext($from_id, $message_id, $textbotlang['users']['Balance']['selectPayment'], $step_payment);
+            Editmessagetext($from_id, $message_id, $textbotlang['users']['Balance']['selectPayment'], cofStepPaymentFor($step_payment, $user['Processing_value']));   // [cof-hide]
             return;
         }
         if (getPaySettingValue("digistatus") != "ondigi" || !cofEnabledNetworks()) {
             sendmessage($from_id, "❌ این روش پرداخت در حال حاضر غیرفعال است.", null, 'HTML');
             return;
         }
-        $rates = rate_arze();
+        $rates = ($cofUsd = cofRateCached()) ? ['USD' => $cofUsd] : null;   // [cof-hide] same rate as the list
         if ($rates === null || empty($rates['USD'])) {
             sendmessage($from_id, $textbotlang['users']['Balance']['errorLinkPayment'], $keyboard, 'HTML');
             return;
@@ -5786,7 +5786,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             sendmessage($from_id, strtr($textbotlang['users']['Balance']['depositRangePlisio'], ['{mainbalance}' => number_format($cofMin), '{maxbalance}' => number_format($cofMax)]), null, 'HTML');
             return;
         }
-        $rates = rate_arze();
+        $rates = ($cofUsd = cofRateCached()) ? ['USD' => $cofUsd] : null;   // [cof-hide] same rate as the list
         if ($rates === null || empty($rates['USD'])) {
             sendmessage($from_id, $textbotlang['users']['Balance']['errorLinkPayment'], $keyboard, 'HTML');
             step('home', $from_id);
@@ -6529,7 +6529,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             }
             $Balance_prim = $volume - $user['Balance'];
             update("user", "Processing_value", $Balance_prim, "id", $from_id);
-            sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], $step_payment, 'HTML');
+            sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], cofStepPaymentFor($step_payment, $Balance_prim), 'HTML');   // [cof-hide]
             step('get_step_payment', $from_id);
             return;
         }
@@ -7208,7 +7208,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             }
             $Balance_prim = $prodcut['price_product'] - $user['Balance'];
             update("user", "Processing_value", $Balance_prim, "id", $from_id);
-            sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], $step_payment, 'HTML');
+            sendmessage($from_id, $textbotlang['users']['sell']['noCredit'], cofStepPaymentFor($step_payment, $Balance_prim), 'HTML');   // [cof-hide]
             step('get_step_payment', $from_id);
             return;
         }

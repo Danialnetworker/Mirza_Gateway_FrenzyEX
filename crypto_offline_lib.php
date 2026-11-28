@@ -71,11 +71,50 @@ function cofTooSmall(int $price, float $usdRate): bool
     return $usdRate <= 0 || (int) ceil(round(cofDiscounted($price) * 100 / $usdRate, 4)) < 100;
 }
 
+// [cof-hide] USD rate cached 5 minutes: the payment list is shown often and rate_arze() is a remote call
+function cofRateCached(): ?float
+{
+    $f = sys_get_temp_dir() . '/mirza_cof_usd_rate.json';
+    $c = @json_decode((string) @file_get_contents($f), true);
+    if (is_array($c) && ($c['t'] ?? 0) > time() - 300 && ($c['usd'] ?? 0) > 0) {
+        return (float) $c['usd'];
+    }
+    $r = function_exists('rate_arze') ? rate_arze() : null;
+    if (!is_array($r) || empty($r['USD'])) {
+        return null;
+    }
+    @file_put_contents($f, json_encode(['t' => time(), 'usd' => (float) $r['USD']]), LOCK_EX);
+    return (float) $r['USD'];
+}
+
+/** [cof-hide] Payment-list keyboard for this amount: no USDT buttons when it is under 1 USDT (unknown rate: unchanged). */
+function cofStepPaymentFor($keyboard, $amount)
+{
+    $k = is_string($keyboard) ? json_decode($keyboard, true) : null;
+    if (!is_array($k) || empty($k['inline_keyboard'])) {
+        return $keyboard;
+    }
+    $rate = cofRateCached();
+    if ($rate === null || !cofTooSmall((int) $amount, $rate)) {
+        return $keyboard;
+    }
+    $rows = [];
+    foreach ($k['inline_keyboard'] as $row) {
+        $row = array_values(array_filter($row, fn($b) => strpos((string) ($b['callback_data'] ?? ''), 'cof-') !== 0));
+        if ($row) {
+            $rows[] = $row;
+        }
+    }
+    $k['inline_keyboard'] = $rows;
+    return json_encode($k);
+}
+
 /** Smallest toman amount (rounded up to 1,000) that is payable in USDT at this rate. */
 function cofMinToman(float $usdRate): int
 {
     $d = 100 - cofDiscount();
-    $t = (int) ceil($usdRate * 100 / max(1.0, $d));
+    // [cof-hide] the invoice rounds USDT UP to the cent: payable starts just under 1 USDT, search up from 0.99
+    $t = max(1, (int) floor($usdRate * 99 / max(1.0, $d)) - 1);
     while (cofTooSmall($t, $usdRate)) {
         $t++;
     }
