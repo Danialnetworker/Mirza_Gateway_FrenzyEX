@@ -4966,7 +4966,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     update("user", "Processing_value", $balancelast, "id", $from_id);
     sendmessage($from_id, $textbotlang['users']['Balance']['selectPayment'], cofStepPaymentFor($step_payment, $balancelast), 'HTML');   // [cof-hide]
     step('get_step_payment', $from_id);
-} elseif (in_array($user['step'], ["get_step_payment", "get_step_payment_buy", "get_step_payment_service"]) && in_array($datain, ["cart_to_offline", "aqayepardakht", "zarinpal", "variza", "plisio", "nowpayment", "iranpay1", "iranpay2", "iranpay4", "frenzyex", "tetra98", "iranpay3", "digitaltron", "startelegrams", "cof-trc20", "cof-bep20", "cof-pick", "cof-back"])) {   // [cof-pick]
+} elseif (in_array($user['step'], ["get_step_payment", "get_step_payment_buy", "get_step_payment_service"]) && in_array($datain, ["cart_to_offline", "aqayepardakht", "zarinpal", "variza", "plisio", "nowpayment", "iranpay1", "iranpay2", "iranpay4", "frenzyex", "tetra98", "iranpay3", "digitaltron", "startelegrams", "cof-trc20", "cof-bep20", "cof-pick", "cof-back", "smartrial"])) {   // [cof-pick]
     if ($user['step'] == "get_step_payment_buy") {
         $pending_order = select("invoice", "*", "id_invoice", $user['Processing_value_one'], "select");
         if ($pending_order == false || $pending_order['Status'] != "unpaid") {
@@ -5743,6 +5743,58 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
         sendmessage($from_id, $textnowpayments, $paymentkeyboard, 'HTML');
         step("getvoocherx", $from_id);
         savedata("clear", "id_payment", $randomString);
+    } elseif ($datain == "smartrial") {   // [smartrial] weighted round-robin + failover over FrenzyEx / Tronado / TetraPay
+        require_once __DIR__ . '/smartrial_lib.php';
+        $sr_amount = (int) $user['Processing_value'];
+        $sr_list = smartrial_on() ? smartrial_candidates($sr_amount) : [];
+        if (!$sr_list) {
+            sendmessage($from_id, "❌ برای این مبلغ درگاه ریالی فعالی نیست؛ لطفاً روش پرداخت دیگری انتخاب کنید.", null, 'HTML');
+            return;
+        }
+        deletemessage($from_id, $message_id);
+        sendmessage($from_id, $textbotlang['users']['Balance']['linkpayments'], $keyboard, 'HTML');
+        $sr_done = false;
+        $sr_errors = [];
+        foreach ($sr_list as $sr_gw) {
+            try {
+                $sr = smartrial_create($sr_gw, $user, $from_id);
+            } catch (Throwable $e) {
+                $sr = ['ok' => false, 'why' => $sr_gw . ': ' . $e->getMessage()];
+            }
+            if (empty($sr['ok'])) {
+                $sr_errors[] = $sr['why'];
+                error_log('smartrial: ' . $sr['why']);
+                if (smartrial_mark($sr_gw, false, $sr['why'])) {
+                    smartrial_report("⚠️ <b>درگاه هوشمند ریالی</b>\n" . smartrial_defs()[$sr_gw]['name'] . " سه بار پشت سر هم لینک نساخت و ۱۵ دقیقه از چرخه کنار گذاشته شد.\nآخرین خطا: <code>" . htmlspecialchars($sr['why']) . "</code>");
+                }
+                continue;
+            }
+            smartrial_mark($sr_gw, true);
+            linkPaymentToOrder($sr['order'], $user);
+            if (!empty($sr['help']) && $sr['help'] != 2) {
+                $sr_help = json_decode($sr['help'], true);
+                if (is_array($sr_help) && ($sr_help['type'] ?? '') == "text") {
+                    sendmessage($from_id, $sr_help['text'], null, 'HTML');
+                } elseif (is_array($sr_help) && ($sr_help['type'] ?? '') == "photo") {
+                    sendphoto($from_id, $sr_help['photoid'], $sr_help['text'] ?? null);
+                } elseif (is_array($sr_help) && ($sr_help['type'] ?? '') == "video") {
+                    sendvideo($from_id, $sr_help['videoid'], $sr_help['text'] ?? null);
+                }
+            }
+            $sr_def = smartrial_defs()[$sr_gw];
+            $sr_sent = sendmessage($from_id, "💳 درگاه: <b>{$sr_def['name']}</b> ({$sr_def['kind']})\n\n" . $sr['text'], $sr['markup'], 'HTML');
+            if (!empty($sr['tronado'])) {
+                updatePaymentMessageId($sr_sent, $sr['order']);
+            }
+            step('home', $from_id);   // one link per invoice: pressing the old button again does nothing
+            $sr_done = true;
+            break;
+        }
+        if (!$sr_done) {
+            sendmessage($from_id, $textbotlang['users']['Balance']['errorLinkPayment'], $keyboard, 'HTML');
+            step('home', $from_id);
+            smartrial_report("❌ <b>درگاه هوشمند ریالی</b>: هیچ درگاهی لینک نساخت.\n👤 <code>$from_id</code> | 💰 " . number_format($sr_amount) . " تومان\n<code>" . htmlspecialchars(implode("\n", $sr_errors)) . "</code>");
+        }
     } elseif ($datain == "cof-pick" || $datain == "cof-back") {   // [cof-pick]
         require_once __DIR__ . '/crypto_offline_lib.php';
         if ($datain == "cof-back") {

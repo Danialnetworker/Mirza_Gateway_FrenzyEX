@@ -90,6 +90,9 @@ function cofRateCached(): ?float
 /** [cof-hide] Payment-list keyboard for this amount: no USDT buttons when it is under 1 USDT (unknown rate: unchanged). */
 function cofStepPaymentFor($keyboard, $amount)
 {
+    if (function_exists('smartrial_filter')) {   // [smartrial] no smart button when no gateway takes this amount
+        $keyboard = smartrial_filter($keyboard, $amount);
+    }
     $k = is_string($keyboard) ? json_decode($keyboard, true) : null;
     if (!is_array($k) || empty($k['inline_keyboard'])) {
         return $keyboard;

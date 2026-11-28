@@ -43,6 +43,8 @@ if (isset($backmenu_register) && is_callable($backmenu_register) && isset($Frenz
 }
 // <<< FRENZYEX GATEWAY
 require_once __DIR__ . '/tetra98_lib.php';   // [tetra98]
+require_once __DIR__ . '/smartrial_lib.php';   // [smartrial]
+$backmenu_register(array_map(fn($g) => 'smartrial_w_' . $g, array_keys(smartrial_defs())), json_encode(['inline_keyboard' => smartrial_admin_rows(true)]));
 $backmenu_register(['tetra98_set_api', 'tetra98_set_webhook', 'tetra98_set_min', 'tetra98_set_max', 'tetra98_set_cashback'], $tetra98_setting_inline);
 $backmenu_register(["addchannel", "getremark", "getlinkjoin", "removechannel"], $channelkeyboard);
 // [crypto-offline-auto]
@@ -6007,6 +6009,34 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
     }
     sendmessage($from_id, $textbotlang['Admin']['price']['amountSaved'], $shopkeyboard, 'HTML');
     step('home', $from_id);
+} elseif ((in_array($datain, ['paygw-smartrial', 'paygwtoggle-smartrial', 'srl-stats'], true) || preg_match('/^srl-t-(\w+)$/', $datain, $srl)) && $adminrulecheck['rule'] == "administrator") {   // [smartrial]
+    if ($datain == 'srl-stats') {
+        Editmessagetext($from_id, $message_id, smartrial_stats_text(), json_encode(['inline_keyboard' => [[['text' => '↩️ بازگشت', 'callback_data' => 'paygw-smartrial']]]]));
+        return;
+    }
+    if ($datain == 'paygwtoggle-smartrial') {
+        config_set('pay', 'statussmartrial', smartrial_on() ? '0' : '1');
+    } elseif (!empty($srl) && isset(smartrial_defs()[$srl[1]])) {
+        $srl_cfg = smartrial_cfg();
+        $srl_cfg[$srl[1]]['on'] = $srl_cfg[$srl[1]]['on'] ? 0 : 1;
+        smartrial_save_cfg($srl_cfg);
+    }
+    Editmessagetext($from_id, $message_id, smartrial_admin_text(), json_encode(['inline_keyboard' => smartrial_admin_rows(true)]));
+} elseif (preg_match('/^srl-w-(\w+)$/', $datain, $srl) && isset(smartrial_defs()[$srl[1]]) && $adminrulecheck['rule'] == "administrator") {   // [smartrial]
+    $srl_def = smartrial_defs()[$srl[1]];
+    sendmessage($from_id, "⚖️ وزن <b>{$srl_def['name']}</b> را از 0 تا 10 ارسال کنید.\nوزن بیشتر = سهم بیشتر از پرداخت‌ها. وزن 0 یعنی خارج از چرخه.\nوزن فعلی: " . smartrial_cfg()[$srl[1]]['w'], $backadmin, 'HTML');
+    step('smartrial_w_' . $srl[1], $from_id);
+} elseif (preg_match('/^smartrial_w_(\w+)$/', (string) $user['step'], $srl) && isset(smartrial_defs()[$srl[1]])) {   // [smartrial]
+    $srl_v = strtr(trim((string) $text), ['۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4', '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9']);
+    if (!ctype_digit($srl_v) || (int) $srl_v > 10) {
+        sendmessage($from_id, 'وزن باید عددی از 0 تا 10 باشد.', $backadmin, 'HTML');
+        return;
+    }
+    $srl_cfg = smartrial_cfg();
+    $srl_cfg[$srl[1]]['w'] = (int) $srl_v;
+    smartrial_save_cfg($srl_cfg);
+    step('home', $from_id);
+    sendmessage($from_id, smartrial_admin_text(), json_encode(['inline_keyboard' => smartrial_admin_rows(true)]), 'HTML');
 } elseif ($datain == "paygwlist" && $adminrulecheck['rule'] == "administrator") {
     Editmessagetext($from_id, $message_id, $textbotlang['Admin']['gateway']['intro'], paymentGatewaysKeyboard());
 } elseif (preg_match('/^paygw(toggle)?-(\w+)$/', $datain, $gatewayMatch) && isset($paymentGateways[$gatewayMatch[2]]) && $adminrulecheck['rule'] == "administrator") {

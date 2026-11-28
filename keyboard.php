@@ -444,6 +444,10 @@ if (!empty($step_payment['inline_keyboard']) && is_array($step_payment['inline_k
 $step_payment['inline_keyboard'][] = [
     ['text' => $textbotlang['keyboard']['closeList'], 'callback_data' => "colselist"]
 ];
+require_once __DIR__ . '/smartrial_lib.php';   // [smartrial] one rial button on top
+if (smartrial_any_ready()) {
+    array_unshift($step_payment['inline_keyboard'], [['text' => '💳 پرداخت ریالی (درگاه هوشمند)', 'callback_data' => 'smartrial']]);
+}
 $step_payment = json_encode($step_payment);
 $keyboardhelpadmin = json_encode([
     'keyboard' => [
@@ -1651,6 +1655,7 @@ $tetra98_setting_inline = json_encode([   // [tetra98] paygwopt-<lang key>, see 
     ],
 ]);
 $paymentGateways = [
+    'smartrial' => ['label' => '💳 درگاه هوشمند ریالی', 'setting' => 'statussmartrial', 'on' => '1', 'off' => '0', 'keyboard' => json_encode(['inline_keyboard' => smartrial_admin_rows()])],   // [smartrial]
     'card' => ['label' => $textbotlang['keyboard']['cartToCartGateway'], 'setting' => 'Cartstatus', 'on' => 'oncard', 'off' => 'offcard', 'keyboard' => $CartManage],
     'plisio' => ['label' => 'Plisio', 'setting' => 'nowpaymentstatus', 'on' => 'onnowpayment', 'off' => 'offnowpayment', 'keyboard' => $NowPaymentsManage],
     'nowpayment' => ['label' => 'NOWPayments', 'setting' => 'statusnowpayment', 'on' => '1', 'off' => '0', 'keyboard' => $nowpayment_setting_keyboard],
