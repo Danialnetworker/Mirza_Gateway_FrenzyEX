@@ -381,6 +381,12 @@ if (frenzyex_enabled()) {
     ];
 }
 // <<< FRENZYEX GATEWAY
+require_once __DIR__ . '/tetra98_lib.php';   // [tetra98]
+if (tetra98_enabled()) {
+    $step_payment['inline_keyboard'][] = [
+        ['text' => $textbotlang['keyboard']['tetraBuyer'] ?? '💳 پرداخت آنلاین (TetraPay)', 'callback_data' => "tetra98"]
+    ];
+}
 $variza = getPaySettingValue("variza_status", "offvariza");
 if (
     $variza == "onvariza"
@@ -1620,6 +1626,25 @@ $frenzyex_setting_inline = json_encode([
         ],
     ],
 ]);
+$tetra98_setting_inline = json_encode([   // [tetra98] paygwopt-<lang key>, see admin.php
+    'inline_keyboard' => [
+        [
+            ['text' => $textbotlang['keyboard']['ttApiKey'], 'callback_data' => "paygwopt-ttApiKey"],
+            ['text' => $textbotlang['keyboard']['ttWebhookKey'], 'callback_data' => "paygwopt-ttWebhookKey"],
+        ],
+        [
+            ['text' => $textbotlang['keyboard']['ttMinAmount'], 'callback_data' => "paygwopt-ttMinAmount"],
+            ['text' => $textbotlang['keyboard']['ttMaxAmount'], 'callback_data' => "paygwopt-ttMaxAmount"],
+        ],
+        [
+            ['text' => $textbotlang['keyboard']['ttCashback'], 'callback_data' => "paygwopt-ttCashback"],
+            ['text' => $textbotlang['keyboard']['ttSandbox'], 'callback_data' => "paygwopt-ttSandbox"],
+        ],
+        [
+            ['text' => $textbotlang['keyboard']['backToGateways'], 'callback_data' => "paygwlist"],
+        ],
+    ],
+]);
 $paymentGateways = [
     'card' => ['label' => $textbotlang['keyboard']['cartToCartGateway'], 'setting' => 'Cartstatus', 'on' => 'oncard', 'off' => 'offcard', 'keyboard' => $CartManage],
     'plisio' => ['label' => 'Plisio', 'setting' => 'nowpaymentstatus', 'on' => 'onnowpayment', 'off' => 'offnowpayment', 'keyboard' => $NowPaymentsManage],
@@ -1634,6 +1659,7 @@ $paymentGateways = [
     'digi' => ['label' => $textbotlang['keyboard']['cryptoOfflinePayment'], 'setting' => 'digistatus', 'on' => 'ondigi', 'off' => 'offdigi', 'keyboard' => $tronnowpayments],
     'star' => ['label' => 'Star Telegram', 'setting' => 'statusstar', 'on' => '1', 'off' => '0', 'keyboard' => $Startelegram],
     'frenzyex' => ['label' => $textbotlang['keyboard']['frenzyExLabel'], 'setting' => 'statusfrenzyex', 'on' => '1', 'off' => '0', 'keyboard' => $frenzyex_setting_inline],
+    'tetra98' => ['label' => $textbotlang['keyboard']['tetraLabel'], 'setting' => 'statustetra98', 'on' => '1', 'off' => '0', 'keyboard' => $tetra98_setting_inline],   // [tetra98]
 ];
 function paymentGatewaysKeyboard()
 {

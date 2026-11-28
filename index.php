@@ -4966,7 +4966,7 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
     update("user", "Processing_value", $balancelast, "id", $from_id);
     sendmessage($from_id, $textbotlang['users']['Balance']['selectPayment'], $step_payment, 'HTML');
     step('get_step_payment', $from_id);
-} elseif (in_array($user['step'], ["get_step_payment", "get_step_payment_buy", "get_step_payment_service"]) && in_array($datain, ["cart_to_offline", "aqayepardakht", "zarinpal", "variza", "plisio", "nowpayment", "iranpay1", "iranpay2", "iranpay4", "frenzyex", "iranpay3", "digitaltron", "startelegrams", "cof-trc20", "cof-bep20"])) {
+} elseif (in_array($user['step'], ["get_step_payment", "get_step_payment_buy", "get_step_payment_service"]) && in_array($datain, ["cart_to_offline", "aqayepardakht", "zarinpal", "variza", "plisio", "nowpayment", "iranpay1", "iranpay2", "iranpay4", "frenzyex", "tetra98", "iranpay3", "digitaltron", "startelegrams", "cof-trc20", "cof-bep20"])) {
     if ($user['step'] == "get_step_payment_buy") {
         $pending_order = select("invoice", "*", "id_invoice", $user['Processing_value_one'], "select");
         if ($pending_order == false || $pending_order['Status'] != "unpaid") {
@@ -5178,6 +5178,41 @@ if ($text == "/start" || $datain == "start" || $text == "start") {
             ]]
         ]), 'HTML');
         // <<< FRENZYEX GATEWAY
+    } elseif ($datain == "tetra98") {   // [tetra98]
+        require_once __DIR__ . '/tetra98_lib.php';
+        if (!tetra98_enabled()) {
+            sendmessage($from_id, $textbotlang['users']['Balance']['errorLinkPayment'], $keyboard, 'HTML');
+            return;
+        }
+        $tt_min = (int) tetra98_setting('minbalancetetra98', '20000');
+        $tt_max = (int) tetra98_setting('maxbalancetetra98', '10000000');
+        if ($user['Processing_value'] < $tt_min || $user['Processing_value'] > $tt_max) {
+            $tt_range = $textbotlang['users']['Balance']['depositRange'] ?? 'مبلغ باید بین {mainbalance} تا {maxbalance} تومان باشد.';
+            sendmessage($from_id, strtr($tt_range, ['{mainbalance}' => number_format($tt_min), '{maxbalance}' => number_format($tt_max)]), null, 'HTML');
+            return;
+        }
+        deletemessage($from_id, $message_id);
+        sendmessage($from_id, $textbotlang['users']['Balance']['linkpayments'], $keyboard, 'HTML');
+        $tt_order = 'tt' . bin2hex(random_bytes(6));
+        $tt_pay = createPayTetra98($user['Processing_value'], $tt_order);
+        if (empty($tt_pay['ok'])) {
+            sendmessage($from_id, $textbotlang['users']['Balance']['errorLinkPayment'], $keyboard, 'HTML');
+            step('home', $from_id);
+            return;
+        }
+        // the row exists only once the link does; the token is kept to match the return and the webhook
+        $pdo->prepare("INSERT INTO payment_report (id_user,id_order,time,price,payment_Status,Payment_Method,id_invoice,dec_not_confirmed) VALUES (?,?,?,?,?,?,?,?)")
+            ->execute([$from_id, $tt_order, date('Y/m/d H:i:s'), $user['Processing_value'], "Unpaid", "tetra98", null,
+                json_encode(['token' => $tt_pay['token']])]);
+        linkPaymentToOrder($tt_order, $user);
+        $tt_tpl = $textbotlang['users']['Balance']['invoiceCreated2'] ?? "شماره سفارش: %s\nمبلغ: %s تومان";
+        $tt_text = sprintf($tt_tpl, $tt_order, number_format($user['Processing_value'], 0));
+        if (($tt_pay['payable_amount'] ?? '') !== '' && (int) $tt_pay['payable_amount'] > (int) $user['Processing_value'] * 10) {
+            $tt_text .= "\nمبلغ قابل پرداخت با کارمزد درگاه: " . number_format(intdiv((int) $tt_pay['payable_amount'], 10)) . " تومان";
+        }
+        sendmessage($from_id, $tt_text, json_encode(['inline_keyboard' => [[
+            ['text' => $textbotlang['users']['Balance']['payments'], 'url' => $tt_pay['payment_url']],
+        ]]]), 'HTML');
     } elseif ($datain == "zarinpal") {
         if ($user['Processing_value'] < 5000) {
             sendmessage($from_id, $textbotlang['users']['Balance']['zarinpal'], null, 'HTML');

@@ -42,6 +42,8 @@ if (isset($backmenu_register) && is_callable($backmenu_register) && isset($Frenz
     ], $FrenzyExManage);
 }
 // <<< FRENZYEX GATEWAY
+require_once __DIR__ . '/tetra98_lib.php';   // [tetra98]
+$backmenu_register(['tetra98_set_api', 'tetra98_set_webhook', 'tetra98_set_min', 'tetra98_set_max', 'tetra98_set_cashback'], $tetra98_setting_inline);
 $backmenu_register(["addchannel", "getremark", "getlinkjoin", "removechannel"], $channelkeyboard);
 // [crypto-offline-auto]
 $backmenu_register(["cof_set_trc20", "cof_set_bep20", "cof_set_discount", "cof_set_key", "cof_quiz"], $tronnowpayments); // [crypto-wallet-gen]
@@ -407,6 +409,7 @@ if ($datain == "paygwback") {
                 // >>> FRENZYEX GATEWAY — installed by install.sh, do not edit inside these markers
                 'frenzyex' => '🌹 کارت به کارت با FrenzyEx',
                 // <<< FRENZYEX GATEWAY
+                'tetra98' => 'TetraPay',   // [tetra98]
                 'Star Telegram' => $textbotlang['textbot']['starTelegram']
 
             ][$tracepay['Payment_Method']];
@@ -5895,6 +5898,74 @@ if ($datain == "settimecornremove" && $adminrulecheck['rule'] == "administrator"
     step('home', $from_id);
     sendmessage($from_id, 'آموزش FrenzyEx ذخیره شد ✅', $FrenzyExManage, 'HTML');
 // <<< FRENZYEX GATEWAY
+// >>> [tetra98] TetraPay settings (inline paygwopt buttons land here as $text)
+} elseif ($text == $textbotlang['keyboard']['ttApiKey'] && $adminrulecheck['rule'] == "administrator") {
+    $tt_hint = tetra98_is_set(getPaySettingValue('apitetra98', '0')) ? 'ثبت شده ✅' : 'ثبت نشده';
+    sendmessage($from_id, "کلید API درگاه TetraPay را ارسال کنید (پنل تتراپی ← درگاه ← کلید API).\nوضعیت فعلی: {$tt_hint}", $backadmin, 'HTML');
+    step('tetra98_set_api', $from_id);
+} elseif ($user['step'] == 'tetra98_set_api') {
+    $tt_value = trim((string) $text);
+    if ($tt_value === '' || preg_match('/\s/', $tt_value)) {
+        sendmessage($from_id, 'کلید API معتبر نیست.', $backadmin, 'HTML');
+        return;
+    }
+    config_set('pay', 'apitetra98', $tt_value);
+    deletemessage($from_id, $message_id);   // the key does not stay in the chat
+    step('home', $from_id);
+    sendmessage($from_id, 'کلید API تتراپی ذخیره شد ✅', $tetra98_setting_inline, 'HTML');
+} elseif ($text == $textbotlang['keyboard']['ttWebhookKey'] && $adminrulecheck['rule'] == "administrator") {
+    $tt_hint = tetra98_is_set(getPaySettingValue('webhooktetra98', '0')) ? 'ثبت شده ✅' : 'ثبت نشده';
+    sendmessage($from_id, "کلید وب‌هوک TetraPay را ارسال کنید (با whsec_ شروع می‌شود؛ پنل تتراپی ← تنظیمات درگاه ← کلید وب‌هوک).\nبدون این کلید دکمهٔ پرداخت به مشتری نشان داده نمی‌شود.\nوضعیت فعلی: {$tt_hint}", $backadmin, 'HTML');
+    step('tetra98_set_webhook', $from_id);
+} elseif ($user['step'] == 'tetra98_set_webhook') {
+    $tt_value = trim((string) $text);
+    if (strpos($tt_value, 'whsec_') !== 0 || preg_match('/\s/', $tt_value)) {
+        sendmessage($from_id, 'کلید وب‌هوک باید با whsec_ شروع شود.', $backadmin, 'HTML');
+        return;
+    }
+    config_set('pay', 'webhooktetra98', $tt_value);
+    deletemessage($from_id, $message_id);
+    step('home', $from_id);
+    sendmessage($from_id, 'کلید وب‌هوک تتراپی ذخیره شد ✅', $tetra98_setting_inline, 'HTML');
+} elseif (($text == $textbotlang['keyboard']['ttMinAmount'] || $text == $textbotlang['keyboard']['ttMaxAmount']) && $adminrulecheck['rule'] == "administrator") {
+    $tt_which = $text == $textbotlang['keyboard']['ttMinAmount'] ? 'min' : 'max';
+    $tt_now = (int) getPaySettingValue($tt_which == 'min' ? 'minbalancetetra98' : 'maxbalancetetra98', $tt_which == 'min' ? '20000' : '10000000');
+    sendmessage($from_id, ($tt_which == 'min' ? 'حداقل' : 'حداکثر') . ' مبلغ پرداخت با تتراپی را به تومان ارسال کنید. مقدار فعلی: ' . number_format($tt_now), $backadmin, 'HTML');
+    step('tetra98_set_' . $tt_which, $from_id);
+} elseif ($user['step'] == 'tetra98_set_min' || $user['step'] == 'tetra98_set_max') {
+    $tt_value = str_replace([',', ' ', '٬'], '', (string) $text);
+    if (!ctype_digit($tt_value) || (int) $tt_value < 1000) {
+        sendmessage($from_id, 'یک مبلغ معتبر (حداقل ۱٬۰۰۰ تومان) ارسال کنید.', $backadmin, 'HTML');
+        return;
+    }
+    $tt_min = $user['step'] == 'tetra98_set_min' ? (int) $tt_value : (int) getPaySettingValue('minbalancetetra98', '20000');
+    $tt_max = $user['step'] == 'tetra98_set_max' ? (int) $tt_value : (int) getPaySettingValue('maxbalancetetra98', '10000000');
+    if ($tt_min > $tt_max) {
+        sendmessage($from_id, 'حداقل مبلغ نمی‌تواند از حداکثر مبلغ بیشتر باشد.', $backadmin, 'HTML');
+        return;
+    }
+    config_set('pay', $user['step'] == 'tetra98_set_min' ? 'minbalancetetra98' : 'maxbalancetetra98', (string) ((int) $tt_value));
+    step('home', $from_id);
+    sendmessage($from_id, 'مبلغ ذخیره شد ✅', $tetra98_setting_inline, 'HTML');
+} elseif ($text == $textbotlang['keyboard']['ttCashback'] && $adminrulecheck['rule'] == "administrator") {
+    sendmessage($from_id, 'درصد کش‌بک تتراپی را از 0 تا 100 ارسال کنید. مقدار فعلی: ' . (int) getPaySettingValue('chashbacktetra98', '0') . '%', $backadmin, 'HTML');
+    step('tetra98_set_cashback', $from_id);
+} elseif ($user['step'] == 'tetra98_set_cashback') {
+    $tt_value = trim((string) $text);
+    if (!ctype_digit($tt_value) || (int) $tt_value > 100) {
+        sendmessage($from_id, 'درصد کش‌بک باید عددی بین 0 تا 100 باشد.', $backadmin, 'HTML');
+        return;
+    }
+    config_set('pay', 'chashbacktetra98', (string) ((int) $tt_value));
+    step('home', $from_id);
+    sendmessage($from_id, 'کش‌بک تتراپی ذخیره شد ✅', $tetra98_setting_inline, 'HTML');
+} elseif ($text == $textbotlang['keyboard']['ttSandbox'] && $adminrulecheck['rule'] == "administrator") {
+    $tt_on = getPaySettingValue('sandboxtetra98', '0') === '1' ? '0' : '1';
+    config_set('pay', 'sandboxtetra98', $tt_on);
+    sendmessage($from_id, $tt_on === '1'
+        ? "🧪 حالت آزمایشی (سندباکس) تتراپی روشن شد.\nپرداخت‌ها بدون پول واقعی‌اند؛ قبلش در پنل تتراپی سندباکس درگاه را روشن کنید. بعد از تست حتماً خاموشش کنید."
+        : '✅ حالت آزمایشی خاموش شد؛ پرداخت‌ها واقعی‌اند.', $tetra98_setting_inline, 'HTML');
+// <<< [tetra98]
 } elseif ($text == $textbotlang['keyboard']['cronStatus'] && $adminrulecheck['rule'] == "administrator") {
     [$cronText, $cronKeyboard] = cronStatusMenu();
     sendmessage($from_id, $cronText, $cronKeyboard, 'HTML');
